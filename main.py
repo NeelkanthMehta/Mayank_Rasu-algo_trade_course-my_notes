@@ -1,8 +1,4 @@
-'''
-backtesting strategy 2
-
-for installing alphavantage library: conda install alpha_vantage -c hoishing
-'''
+'''backtesting strategy 2 for installing alphavantage library: conda install alpha_vantage -c hoishing'''
 import copy
 import datetime as dt
 import numpy as np
@@ -80,4 +76,30 @@ def max_dd(c):
     return ddpct.max()
 
 
+ohlcvdict = {ticker: pd.concat([stock_op[ticker], stock_hp[ticker], stock_lp[ticker], stock_cp[ticker], stock_vol[ticker]], axis=1).rename(columns={ticker: 'Open', ticker: 'High', ticker: 'Low', ticker: 'Close', ticker: 'Volume'}) for ticker in tickers}
+ticker_signal = []
+ticker_return = []
+for ticker in tickers:
+    print('Calculating ATR and rolling max price for %s' % ticker)
+    ohlcvdict[ticker]['ATR'] = ATR(ohlcvdict[ticker]['High'], ohlcvdict[ticker]['Low'], ohlcvdict[ticker]['Close'], 20)
+    ohlcvdict[ticker]['RollMaxC'] = ohlcvdict[ticker]['High'].rolling(20).max()
+    ohlcvdict[ticker]['RollMinC'] = ohlcvdict[ticker]['High'].rolling(20).min()
+    ohlcvdict[ticker]['RollMaxV'] = ohlcvdict[ticker]['Volume'].rolling(20).max()
+    ohlcvdict[ticker].dropna(inplace=True)
+    ticker_signal[ticker] = ""
+    ticker_return[ticker] = []
+
+'''Implementing the backtesting logic'''
+for ticker in tickers:
+    print('Calculatig returns for ticker: %s' % tickers[ticker])
+    for i in range(len(ohlcvdict[ticker])):
+        if ticker_signal[ticker] == "":
+            ticker_return[ticker].append(0)
+            if ohlcvdict[ticker]['High'][i] >= ohlcvdict[ticker]['RollMaxC'][i] and ohlcvdict[ticker]['Volume'][i] > 1.5 * ohlcvdict[ticker]['RollMaxV'][i-1]:
+                ticker_signal[ticker] = 'Buy'
+            elif ohlcvdict[ticker]['Low'][i] <= ohlcvdict[ticker]['RollMinC'][i] and ohlcvdict[ticker]['Volume'][i] > 1.5 * ohlcvdict[ticker]['RollMaxV'][i-1]:
+                ticker_signal[ticker] = 'Sell'
+
+        elif ticker_signal[ticker] == "Buy":
+            pass
 
