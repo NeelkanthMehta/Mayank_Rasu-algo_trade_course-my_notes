@@ -3,6 +3,7 @@ import copy
 import datetime as dt
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import pandas_datareader as web
 
 begdt = dt.date.today() - dt.timedelta(1825)
@@ -101,5 +102,51 @@ for ticker in tickers:
                 ticker_signal[ticker] = 'Sell'
 
         elif ticker_signal[ticker] == "Buy":
-            pass
+            if ohlcvdict[ticker]['Close'][i] < ohlcvdict[ticker]['Close'][i-1] - ohlcvdict[ticker]['ATR'][i-1]:
+                ticker_signal[ticker] = ''
+                ticker_return[ticker].append(((ohlcvdict[ticker]['Close'][i-1] - ohlcvdict[ticker]['ATR'][i-1])/ ohlcvdict[ticker]['Close'][i-1])-1)
+            elif ohlcvdict[ticker]['Low'][i] <= ohlcvdict[ticker]['RollMinC'][i] and ohlcvdict[ticker]['Volume'][i] > 1.5 * ohlcvdict[ticker]['RollMaxV'][i-1]:
+                ticker_signal[ticker] = 'Sell'
+                ticker_return[ticker].append(((ohlcvdict[ticker]['Close'][i-1] - ohlcvdict[ticker]['ATR'][i-1])/ ohlcvdict[ticker]['Close'][i-1])-1)
+            else:
+                ticker_return[ticker].append((ohlcvdict[ticker]['Close'][i]/ ohlcvdict[ticker]['Close'][i-1])-1)
+
+        elif ticker_signal[ticker] == "sell":
+            if ohlcvdict[ticker]['Close'][i] > ohlcvdict[ticker]['Close'][i-1] + ohlcvdict[ticker]['ATR'][i-1]:
+                ticker_signal[ticker] = ""
+                ticker_return[ticker].append((ohlcvdict[ticker]['Close'][i-1]/(ohlcvdict[ticker][i-1] + ohlcvdict[ticker]['ATR'][i-1]))-1)
+            elif ohlcvdict[ticker]['High'][i] >= ohlcvdict[ticker]['RollMaxC'][i] and ohlcvdict[ticker]['Volume'][i] > 1.5 * ohlcvdict[ticker]['RollMaxV'][i-1]:
+                ticker_signal[ticker] = "Buy"
+                ticker_return[ticker].append((ohlcvdict[ticker]['Close'][i-1]/ (ohlcvdict[ticker]['Close'][i-1] + ohlcvdict[ticker]['ATR'][i-1]))-1)
+            else:
+                ticker_return[ticker].append((ohlcvdict[ticker]['Close'][i-1]/ ohlcvdict[ticker]['Close'][i])-1)
+
+    ohlcvdict[ticker]['ret'] = np.array(ticker_return[ticker])
+
+
+# Calculating overall strategy KPIs
+strategy_df = pd.DataFrame()
+for ticker in tickers:
+    strategy_df[tickers] = ohlcvdict[ticker]['ret']
+strategy_df['ret'] = strategy_df.mean(axis=1)
+CAGR(strategy_df['ret'])
+sharpe(strategy_df['ret'], 0.025)
+max_dd(strategy_df['ret'])
+
+# Plotting Strategy returns
+strategy_df['ret'].add(1).cumprod().plot();
+plt.show()
+
+# Calculating individual stock KPI
+cagr = {}
+sharpe_ratios = {}
+max_drawdowns = {}
+for ticker in tickers:
+    print('Calculating KPIs for %s' % ticker)
+    cagr[ticker] = CAGR(ohlcvdict[ticker]['ret'])
+    sharpe_ratios[ticker] = sharpe(ohlcvdict[ticker]['ret'], 0.025)
+    max_drawdowns[ticker] = max_dd(ohlcvdict[ticker]['ret'])
+
+KPIdf = pd.DataFrame([cagr, sharpe_ratios, max_drawdowns], index=['Return', 'Sharpe', 'Max_Drawdown'])
+KPIdf.T
 
