@@ -6,7 +6,7 @@ The features of the strategy are as follows:-
 1. Choose high volume, high activity stocks for this strategy (pre market movers, historically high volume stocks etc.)
 
 2. Buy Signal:
-    * Renko bar GEQ 2
+    * Renko bar GEQ 2.
     * MACD line is above signal line
     * MACD line's slope (over last 5 periods) is GEQ signal line's slope (over last 5 periods)
     * Exit when MACD line goes below the signal line and MACD line's slope is lower than signal line's slope
@@ -23,7 +23,6 @@ Created on Sat Aug 10 21:04:26 2019
 """
 
 import copy
-import datetime as dt
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -122,10 +121,10 @@ def renko(Df):
     df = Df.copy()
     df.reset_index(inplace=True)
     df = df.iloc[:,[0, 1, 2, 3, 4, 5]]
-    df.columns = ['date', 'open', 'high', 'low', 'close', 'volume']
+    df.rename(columns = {'Date':'date', 'Open':'open', 'High':'high', 'Low':'low', 'Adj Close':'close', 'Volume':'volume'}, inplace=True)
     df2 = Renko(df)
     df2.brick_size = max(0.5, round(ATR(Df, 120)['ATR'][-1],0))
-    renko_df = df2.get_bricks()
+    renko_df = df2.get_ohlc_data()
     renko_df['bar_num'] = np.where(renko_df['uptrend']==True, 1, np.where(renko_df['uptrend']==False,-1, 0))
     for i in range(1, len(renko_df['bar_num'])):
         if renko_df['bar_num'][i] > 0 and renko_df['bar_num'][i-1] > 0:
@@ -249,29 +248,29 @@ for ticker in tickers:
 # Identifying signals and calculating daily returns
 for ticker in tickers:
     print('Calculating daily returns for %s' % ticker)
-    for i in range(len(ohlcvintraday[ticker])):
+    for i in range(len(ohlcvrenko[ticker])):
         if ticker_signal[ticker] == "":
             ticker_return[ticker].append(0)
             if i > 0:
-                if (ohlcvrenko[ticker]['bar_num'][i] >= 2) and (ohlcvrenko[ticker]['MACD'][i] > ohlcvrenko[ticker]['MACD_sig'][i]) and (ohlcvrenko[ticker]['MACD_slo'][i] > ohlcvrenko[ticker]['MACD_sig_slo'][i]):
+                if ohlcvrenko[ticker]['bar_num'][i] >= 2 and ohlcvrenko[ticker]['MACD'][i] > ohlcvrenko[ticker]['MACD_sig'][i] and ohlcvrenko[ticker]['MACD_slo'][i] > ohlcvrenko[ticker]['MACD_sig_slo'][i]:
                     ticker_signal[ticker] = "Buy"
-                elif (ohlcvrenko[ticker]['bar_num'][i] <= -2) and (ohlcvrenko[ticker]['MACD'][i] < ohlcvrenko[ticker]['MACD_sig'][i]) and (ohlcvrenko[ticker]['MACD_slo'][i] < ohlcvrenko[ticker]['MACD_sig_slo'][i]):
+                elif ohlcvrenko[ticker]['bar_num'][i] <= -2 and ohlcvrenko[ticker]['MACD'][i] < ohlcvrenko[ticker]['MACD_sig'][i] and ohlcvrenko[ticker]['MACD_slo'][i] < ohlcvrenko[ticker]['MACD_sig_slo'][i]:
                     ticker_signal[ticker] = "Sell"
             
         elif ticker_signal[ticker] == "Buy":
-            ticker_return[ticker].append((ohlcvrenko[ticker]['Adj Close'][i]/ ohlcvrenko[ticker]['Adj Close'][i-1])-1)
+            ticker_return[ticker].append((ohlcvrenko[ticker]["Adj Close"][i]/ ohlcvrenko[ticker]["Adj Close"][i-1])-1)
             if i > 0:
-                if (ohlcvrenko[ticker]['bar_num'][i] <= -2) and (ohlcvrenko[ticker]['MACD'][i] < ohlcvrenko[ticker]['MACD_sig'][i]) and (ohlcvrenko[ticker]['MACD_slo'][i] < ohlcvrenko[ticker]['MACD_sig_slo'][i]):
+                if ohlcvrenko[ticker]['bar_num'][i] <= -2 and ohlcvrenko[ticker]['MACD'][i] < ohlcvrenko[ticker]['MACD_sig'][i] and ohlcvrenko[ticker]['MACD_slo'][i] < ohlcvrenko[ticker]['MACD_sig_slo'][i]:
                     ticker_signal[ticker] = "Sell"
-                elif (ohlcvrenko[ticker]['MACD'][i] < ohlcvrenko[ticker]['MACD_sig'][i]) and (ohlcvrenko[ticker]['MACD_slo'][i] < ohlcvrenko[ticker]['MACD_sig_slo']):
+                elif ohlcvrenko[ticker]['MACD'][i] < ohlcvrenko[ticker]['MACD_sig'][i] and ohlcvrenko[ticker]['MACD_slo'][i] < ohlcvrenko[ticker]['MACD_sig_slo']:
                     ticker_signal[ticker] = ""
         
         elif ticker_signal[ticker] == "Sell":
             ticker_return[ticker].append((ohlcvrenko[ticker]['Adj Close'][i-1]/ ohlcvrenko[ticker]['Adj Close'][i])-1)
             if i > 0:
-                if (ohlcvrenko[ticker]["bar_num"][i] >=2) and (ohlcvrenko[ticker]["MACD"][i] > ohlcvrenko[ticker]["MACD_sig"][i]) and (ohlcvrenko[ticker]["MACD_slo"][i] > ohlcvrenko[ticker]["MACD_sig_slo"][i]):
+                if ohlcvrenko[ticker]["bar_num"][i] >=2 and ohlcvrenko[ticker]["MACD"][i] > ohlcvrenko[ticker]["MACD_sig"][i] and ohlcvrenko[ticker]["MACD_slo"][i] > ohlcvrenko[ticker]["MACD_sig_slo"][i]:
                     ticker_signal[ticker] = "Buy"
-                elif (ohlcvrenko[ticker]["MACD"][i] > ohlcvrenko[ticker]["MACD_sig"][i]) and (ohlcvrenko[ticker]["MACD_slope"][i] > ohlcvrenko[ticker]["MACD_sig_slo"][i]):
+                elif ohlcvrenko[ticker]["MACD"][i] > ohlcvrenko[ticker]["MACD_sig"][i] and ohlcvrenko[ticker]["MACD_slope"][i] > ohlcvrenko[ticker]["MACD_sig_slo"][i]:
                     ticker_signal[ticker] = ""
     ohlcvrenko[ticker]['ret'] = np.array(ticker_return[ticker])
 
